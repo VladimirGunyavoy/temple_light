@@ -1,0 +1,11 @@
+# Required to run main.py / watcher.py. Tested with ursina 7.0.0, numpy
+# 2.4.4 on Python 3.11.9 (see README.md's Requirements section for why
+# Python 3.11 specifically). numpy is used by src/spiral.py (occlusion
+# math) even though nothing else under src/ needs it.
+ursina>=7.0
+numpy>=2.0
+
+# Not needed for the app itself, only to run
+# sim/spiral_line_intersection.ipynb (see sim/README.md): matplotlib and
+# a Jupyter kernel (e.g. `pip install jupyterlab`), on top of the numpy
+# above.

@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# ursina's model-loader cache (regenerated from vendor/player_zoom/assets/*.obj on first run)
+models_compressed/
+
+# regenerated every run/tilt (see main.py) — not source
+segments_output.csv
+luminaires_output.csv
+sim/wall_example_output.csv
+sim/wall_example_viz.json

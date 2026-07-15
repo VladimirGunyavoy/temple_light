@@ -1,0 +1,154 @@
+{
+  "groups": {
+    "columns": {
+      "enabled": true,
+      "mode": "spiral",
+      "power_lm": 5000,
+      "tilt_deg": 62.5,
+      "theta_max_deg": 60,
+      "fixtures": [
+        {
+          "index": 0,
+          "s_pct": 32.0,
+          "side": 1,
+          "h_m": 3.0
+        },
+        {
+          "index": 1,
+          "s_pct": 32.0,
+          "side": 2,
+          "h_m": 3.0
+        },
+        {
+          "index": 2,
+          "s_pct": 40.0,
+          "side": 1,
+          "h_m": 2.69
+        },
+        {
+          "index": 3,
+          "s_pct": 40.0,
+          "side": 2,
+          "h_m": 2.69
+        },
+        {
+          "index": 4,
+          "s_pct": 48.0,
+          "side": 1,
+          "h_m": 2.4
+        },
+        {
+          "index": 5,
+          "s_pct": 48.0,
+          "side": 2,
+          "h_m": 2.4
+        },
+        {
+          "index": 6,
+          "s_pct": 56.0,
+          "side": 1,
+          "h_m": 2.19
+        },
+        {
+          "index": 7,
+          "s_pct": 56.0,
+          "side": 2,
+          "h_m": 2.19
+        },
+        {
+          "index": 8,
+          "s_pct": 64.0,
+          "side": 1,
+          "h_m": 2.0
+        },
+        {
+          "index": 9,
+          "s_pct": 64.0,
+          "side": 2,
+          "h_m": 2.0
+        }
+      ]
+    },
+    "floor": {
+      "enabled": true,
+      "mode": "free",
+      "power_lm": 5000,
+      "tilt_deg": 42.5,
+      "theta_max_deg": 45,
+      "fixtures": [
+        {
+          "index": 10,
+          "x_m": 7.031,
+          "y_m": 0.0,
+          "z_m": 0.0
+        },
+        {
+          "index": 11,
+          "x_m": 5.689,
+          "y_m": 0.0,
+          "z_m": 4.133
+        },
+        {
+          "index": 12,
+          "x_m": 2.173,
+          "y_m": 0.0,
+          "z_m": 6.687
+        },
+        {
+          "index": 13,
+          "x_m": -2.173,
+          "y_m": 0.0,
+          "z_m": 6.687
+        },
+        {
+          "index": 14,
+          "x_m": -5.689,
+          "y_m": 0.0,
+          "z_m": 4.133
+        },
+        {
+          "index": 15,
+          "x_m": -7.031,
+          "y_m": 0.0,
+          "z_m": 0.0
+        },
+        {
+          "index": 16,
+          "x_m": -5.689,
+          "y_m": 0.0,
+          "z_m": -4.133
+        },
+        {
+          "index": 17,
+          "x_m": -2.173,
+          "y_m": 0.0,
+          "z_m": -6.687
+        },
+        {
+          "index": 18,
+          "x_m": 2.173,
+          "y_m": 0.0,
+          "z_m": -6.687
+        },
+        {
+          "index": 19,
+          "x_m": 5.689,
+          "y_m": 0.0,
+          "z_m": -4.133
+        }
+      ]
+    }
+  },
+  "fixtures": [
+    {
+      "index": 20,
+      "mode": "free",
+      "power_lm": 15000,
+      "theta_max_deg": 45,
+      "tilt_deg": 41.987,
+      "x_m": 0.0,
+      "y_m": 0.0,
+      "z_m": 10.0
+    }
+  ]
+}
