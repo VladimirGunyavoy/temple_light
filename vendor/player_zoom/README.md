@@ -1,40 +1,44 @@
-# player_zoom (vendored subset)
+# player_zoom (вендоренное подмножество)
 
-Scene scaffolding for the Ursina viewer (`../../main.py`): first-person
-camera/movement, lighting, color config, input dispatch, and a coordinate
-axes gizmo. None of this is part of the light simulation itself — it only
-draws the window you fly around in.
+Обвязка сцены для Ursina-просмотрщика (`../../main.py`): камера/
+перемещение от первого лица, освещение, настройка цвета, диспетчер
+ввода и гизмо координатных осей. Ничего из этого не является частью
+самой симуляции света — это только то, что рисует окно, в котором вы
+летаете.
 
-## Where this came from
+## Откуда это взялось
 
-`player_zoom` is the author's own personal Ursina sandbox project (a
-learning project, not a third-party library), originally developed outside
-this repository. These six files are the subset `main.py` actually imports;
-they were copied in here so `ursina_sim` has no dependency outside its own
-folder. **This is a snapshot, not a live link** — fixes made to the
-original sandbox project will not appear here automatically, and vice
-versa.
+`player_zoom` — личный sandbox-проект автора на Ursina (учебный проект,
+а не сторонняя библиотека), изначально разрабатывавшийся вне этого
+репозитория. Эти шесть файлов — подмножество, которое реально
+импортирует `main.py`; они скопированы сюда, чтобы у `ursina_sim` не
+было зависимостей за пределами собственной папки. **Это снэпшот, а не
+живая связь** — правки в оригинальном sandbox-проекте не появятся здесь
+автоматически, и наоборот.
 
-Not vendored (present in the original project, unused here): `zoom_manager.py`,
-`window_manager.py`, `ui_manager.py`, `ui_constants.py`, `watcher.py`,
-`my_object.py`, `main.py`, `run.py`.
+Не вендорено (есть в оригинальном проекте, но не используется здесь):
+`zoom_manager.py`, `window_manager.py`, `ui_manager.py`,
+`ui_constants.py`, `watcher.py`, `my_object.py`, `main.py`, `run.py`.
 
-## Files
+## Файлы
 
-- `src/scalable.py` — `Scalable` base class (numpy-backed uniform scaling
-  helper) that `scene_setup.py`/`frame.py` build on.
-- `src/color_manager.py` — loads scene colors from
-  `config/json/colors.json` if present, otherwise falls back to sane
-  defaults; used for the floor and axis-frame colors.
-- `src/input_manager.py` — centralizes keyboard input dispatch;
-  `register_key_handler(key, callback)` is the extension point `main.py`
-  uses for the `1`/`2` (tilt) and `r` (rig reload) keys.
-- `src/update_manager.py` — per-frame update dispatch for whatever's been
-  registered with it (here, just the scene setup).
-- `src/frame.py` — draws the X/Y/Z origin axes gizmo (loads
+- `src/scalable.py` — базовый класс `Scalable` (утилита равномерного
+  масштабирования на numpy), на котором строятся `scene_setup.py`/
+  `frame.py`.
+- `src/color_manager.py` — загружает цвета сцены из
+  `config/json/colors.json`, если он есть, иначе откатывается на
+  разумные значения по умолчанию; используется для цвета пола и осей.
+- `src/input_manager.py` — централизует диспетчеризацию клавиатурного
+  ввода; `register_key_handler(key, callback)` — точка расширения,
+  которую использует `main.py` для клавиш `1`/`2` (наклон) и `r`
+  (перезагрузка рига).
+- `src/update_manager.py` — диспетчер покадрового обновления для всего,
+  что в нём зарегистрировано (здесь — только сама сцена).
+- `src/frame.py` — рисует гизмо начала координат X/Y/Z (загружает
   `assets/arrow.obj`).
-- `src/scene_setup.py` — builds the first-person camera/controller,
-  lighting (directional + ambient), and cursor toggle.
-- `assets/arrow.obj` — 3D arrow model used by the axes gizmo. Ursina
-  compiles this to a `.bam` on first run into `ursina_sim/models_compressed/`
-  (gitignored, regenerated automatically — not something to hand-edit).
+- `src/scene_setup.py` — строит камеру/контроллер от первого лица,
+  освещение (направленное + фоновое) и переключение курсора.
+- `assets/arrow.obj` — 3D-модель стрелки для гизмо осей. Ursina
+  компилирует её в `.bam` при первом запуске в
+  `ursina_sim/models_compressed/` (в `.gitignore`, пересоздаётся
+  автоматически — руками не редактировать).

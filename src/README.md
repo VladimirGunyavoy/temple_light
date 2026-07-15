@@ -1,39 +1,45 @@
-# src/ — framework-free physics core
+# src/ — физическое ядро без Ursina
 
-No Ursina, no numpy except `spiral.py` — this is the single source of
-truth for the light-simulation math, shared by both the interactive
-Ursina viewer (`../main.py`) and the standalone CSV exporter
-(`../sim/wall_example.py`). Background/formulas live in `../docs/`.
+Ни Ursina, ни numpy — кроме `spiral.py`. Это единственный источник
+истины для математики симуляции света, общий и для интерактивного
+Ursina-просмотрщика (`../main.py`), и для автономного CSV-экспортёра
+(`../sim/wall_example.py`). Фон/формулы — в `../docs/`.
 
-## Files
+## Файлы
 
-- `vectors.py` — plain-tuple 3D vector ops (add/sub/scale/dot/cross/
-  normalize/rotate). Everything else here is built on these.
-- `luminaire.py` — `Luminaire`: one spotlight's photometric model
-  (`I(psi) = I0*cos(psi)` inside a cone, `docs/LUMINAIRE.md`), plus the
-  tilt/aim helpers and the gizmo-geometry helpers used to draw its
-  aperture cone.
-- `luminaires.py` — `Luminaires`: a collection of `Luminaire`s addressable
-  by index, with `tilt_all()` for the shared up/down tilt controls.
-- `column.py` / `segment.py` — a column (vertical post) sliced into
-  `Segment`s; each segment samples illuminance at its bottom/mid/top
-  points (`docs/PIECES.md`).
-- `structure.py` — `Structure`: all columns/segments for one scenario.
-  Three constructors: `wall()` (old flat test wall, used only by
-  `../sim/wall_example.py`), `circle()` (synthetic ring, `SCENARIO='rings'`
-  in main.py), `spiral()` (the real construction, `SCENARIO='spiral'`).
-- `spiral.py` — analytic geometry of the real two-armed Archimedean
-  spiral (`docs/GEOMETRY.md`): plan positions, the Lagrange column-height
-  profile, and ray/spiral-curve intersection for occlusion
-  (`ray_blocked_by_spiral` + a numpy-vectorized `.batch` version). The
-  only module here that needs numpy.
-- `occlusion.py` — `ray_blocked_by_wall`: the simpler occlusion check used
-  by the synthetic ring scenario (ray vs. a single cylindrical wall).
-- `orchestrator.py` — `Orchestrator`: matches every segment of a
-  `Structure` against every luminaire in a `Luminaires` rig to compute
-  illuminance, wiring in whichever occlusion check the scenario uses
-  (batched if the occluder exposes one, e.g. `spiral.ray_blocked_by_spiral`).
-- `rig_io.py` — loads/saves a luminaire rig from
-  `../luminaires_rig.json`: fixture positions (free-form or mounted on the
-  spiral), per-fixture/per-group enable flags, absolute tilt persistence.
-  See its module docstring for the JSON schema.
+- `vectors.py` — операции над 3D-векторами на обычных кортежах
+  (сложение/вычитание/масштаб/скалярное и векторное произведения/
+  нормализация/поворот). Всё остальное здесь построено на них.
+- `luminaire.py` — `Luminaire`: фотометрическая модель одного прожектора
+  (`I(ψ) = I0·cos ψ` внутри конуса, `docs/LUMINAIRE.md`), плюс
+  вспомогательные методы наклона/прицеливания и геометрия для гизмо
+  раскрыва.
+- `luminaires.py` — `Luminaires`: коллекция `Luminaire`, адресуемая по
+  индексу, с `tilt_all()` для общего управления наклоном вверх/вниз.
+- `column.py` / `segment.py` — столб (вертикальная стойка), разрезанный
+  на `Segment`ы; каждый сегмент считает освещённость в своих нижней/
+  средней/верхней точках (`docs/PIECES.md`).
+- `structure.py` — `Structure`: все столбы/сегменты одного сценария. Три
+  конструктора: `wall()` (старая плоская тестовая стена, используется
+  только `../sim/wall_example.py`), `circle()` (синтетическое кольцо,
+  `SCENARIO='rings'` в main.py), `spiral()` (реальная конструкция,
+  `SCENARIO='spiral'`).
+- `spiral.py` — аналитическая геометрия настоящей двуплечей спирали
+  Архимеда (`docs/GEOMETRY.md`): позиции в плане, профиль высоты столба
+  Лагранжа, пересечение луча с кривой спирали для затенения
+  (`ray_blocked_by_spiral` + векторизованная numpy-версия `.batch`).
+  Единственный модуль здесь, которому нужен numpy.
+- `occlusion.py` — `ray_blocked_by_wall`: более простая проверка
+  затенения, используемая синтетическим кольцевым сценарием (луч против
+  одной цилиндрической стены).
+- `orchestrator.py` — `Orchestrator`: сопоставляет каждый сегмент
+  `Structure` с каждым фонарём в риге `Luminaires` для расчёта
+  освещённости, подключая ту проверку затенения, которую использует
+  сценарий (батчево, если occluder её предоставляет — например,
+  `spiral.ray_blocked_by_spiral`).
+- `rig_io.py` — загружает/сохраняет риг фонарей из
+  `../luminaires_rig.json`: позиции фикстур (произвольные или
+  закреплённые на спирали), флаги вкл/выкл на фикстуру/группу,
+  сохранение абсолютного наклона. Схему JSON см. в
+  `../docs/RIG.md` (практическое руководство) или в docstring самого
+  модуля (уровень реализации).

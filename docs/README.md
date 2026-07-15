@@ -1,37 +1,37 @@
-# docs/ — design background + usage guides
+# docs/ — дизайн-контекст и руководства по использованию
 
-Two kinds of document here: design background (the math/reasoning behind
-the code, read once to understand *why*) and a usage guide (read
-whenever you're actually editing the rig). Read the design docs in this
-order:
+Здесь два разных типа документов: дизайн-контекст (математика и
+рассуждения, стоящие за кодом — читать один раз, чтобы понять *почему*
+так) и практическое руководство (читать каждый раз, когда реально
+правишь риг). Дизайн-доки лучше читать в этом порядке:
 
-1. **GEOMETRY.md** — shape of the construction: two mirrored Archimedean
-   spirals of columns in plan, each column's height given by a Lagrange
-   interpolation profile. Units, axes, and the column-pitch/scale
-   decisions are all recorded here.
-2. **PIECES.md** — how a column is broken into `Segment`s for illuminance
-   sampling (board cross-section, not a cylinder; one fixed outward face
-   normal per board).
-3. **LUMINAIRE.md** — the spotlight photometric model (`I(psi) =
-   I0*cos(psi)` inside a cone, calibrated over the fixture's actual beam
-   cone) that `src/luminaire.py` implements.
+1. **GEOMETRY.md** — форма конструкции: две зеркальные спирали Архимеда
+   столбов в плане, высота каждого столба — по профилю интерполяции
+   Лагранжа. Единицы, оси, решения по шагу столбов/масштабу — всё здесь.
+2. **PIECES.md** — как столб делится на `Segment`ы для расчёта
+   освещённости (сечение — доска, не цилиндр; одна фиксированная
+   нормаль лицевой стороны на доску).
+3. **LUMINAIRE.md** — фотометрическая модель прожектора (`I(ψ) =
+   I0·cos ψ` внутри конуса, калибровка по реальному раскрыву конкретного
+   фонаря), которую реализует `src/luminaire.py`.
 
-Then, separately:
+Отдельно от них:
 
-4. **RIG.md** — practical, field-by-field guide to `luminaires_rig.json`
-   (the fixture list for `SCENARIO='spiral'`): the JSON shape, every
-   field and what it means, both position modes (including the
-   non-obvious mechanics of `mode="spiral"`'s `s_pct`), aiming/tilt,
-   enabling/disabling, and the validation errors you might hit. Start
-   here if you just want to add or move a fixture and don't care about
-   the underlying math.
+4. **RIG.md** — практическое, по-полевое руководство по
+   `luminaires_rig.json` (список фонарей для `SCENARIO='spiral'`): форма
+   JSON, каждое поле и что оно значит, оба режима позиционирования
+   (включая не самую очевидную механику `s_pct` в режиме `"spiral"`),
+   прицеливание/наклон, вкл/выкл, ошибки валидации, с которыми можно
+   столкнуться. Начните отсюда, если просто хотите добавить или
+   передвинуть фонарь и не хотите вникать в математику.
 
-GEOMETRY/PIECES/LUMINAIRE describe the *design*, not the current code
-state — e.g. numeric placeholders (board width/thickness, segment
-length) may have been superseded by later values in `main.py`/
-`src/rig_io.py`. When in doubt, the code is authoritative for current
-numbers; these docs are authoritative for the reasoning behind them.
-RIG.md is a live usage guide, not a design-history doc — if it and the
-code ever disagree, that's a bug in RIG.md, not "historical context" (see
-`src/rig_io.py`'s own module docstring, which is the implementation-level
-counterpart to RIG.md's user-facing one).
+GEOMETRY/PIECES/LUMINAIRE описывают *дизайн*, а не обязательно текущее
+состояние кода — например, числовые плейсхолдеры (ширина/толщина доски,
+длина куска) могли быть впоследствии переопределены в `main.py`/
+`src/rig_io.py`. Если сомневаетесь — код авторитетен по актуальным
+числам, эти доки авторитетны по рассуждениям, которые за ними стоят.
+RIG.md — живое практическое руководство, а не история дизайн-решений:
+если оно когда-нибудь разойдётся с кодом, это баг в RIG.md, а не
+«исторический контекст» (см. также docstring самого модуля
+`src/rig_io.py` — это его аналог на уровне реализации, для тех, кто
+читает код, а не доку).

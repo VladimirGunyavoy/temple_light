@@ -1,9 +1,9 @@
-# vendor/ — third-party-style, vendored-in code
+# vendor/ — вендоренный (скопированный) сторонний код
 
-Code this project depends on but doesn't own the source of. Currently
-just one entry:
+Код, от которого этот проект зависит, но исходники которого он не
+поддерживает сам. Сейчас здесь только один пункт:
 
-- **player_zoom/** — a small subset of the author's own Ursina
-  scene-scaffolding sandbox project, copied in so `ursina_sim` has no
-  file-system dependency outside this folder. See
-  `player_zoom/README.md` for exactly what's included and why.
+- **player_zoom/** — небольшое подмножество личного sandbox-проекта
+  автора для сцен на Ursina, скопированное сюда, чтобы `ursina_sim` не
+  имел файловых зависимостей за пределами этой папки. Что именно и
+  зачем скопировано — см. `player_zoom/README.md`.

@@ -1,210 +1,215 @@
-# The fixture rig (`luminaires_rig.json`) — how to use it
+# Риг фонарей (`luminaires_rig.json`) — как этим пользоваться
 
-This is the practical, field-by-field guide to `luminaires_rig.json`, the
-file that defines every spotlight in the `SCENARIO='spiral'` scene (the
-default scenario — see `../main.py`). If you just want to add, move, or
-retune a fixture, this document has what you need. For the math behind
-the numbers (photometry, the spiral's geometry) see `LUMINAIRE.md` and
-`GEOMETRY.md`; for the loader's own implementation notes see
-`../src/rig_io.py`'s module docstring — this file explains the *shape*
-of the JSON and how to work with it day to day, `rig_io.py` explains how
-that shape gets turned into `Luminaire` objects.
+Это практическое, по-полевое руководство по `luminaires_rig.json` —
+файлу, который задаёт каждый прожектор в сцене `SCENARIO='spiral'`
+(сценарий по умолчанию — см. `../main.py`). Если вы просто хотите
+добавить, передвинуть или подстроить фонарь — здесь есть всё, что для
+этого нужно. За математикой, стоящей за числами (фотометрия, геометрия
+спирали), — в `LUMINAIRE.md` и `GEOMETRY.md`; за деталями реализации
+самого загрузчика — в docstring модуля `../src/rig_io.py`. Этот файл
+объясняет *форму* JSON и то, как с ней работать день за днём; `rig_io.py`
+объясняет, как эта форма превращается в объекты `Luminaire`.
 
-`SCENARIO='rings'` does not read this file at all — its rig is a small
-synthetic ring of lights generated in code (`main.py`'s
-`_luminaire_on_ring`). Everything below applies only to `'spiral'`.
+`SCENARIO='rings'` этот файл вообще не читает — его риг — маленькое
+синтетическое кольцо фонарей, сгенерированное прямо в коде
+(`_luminaire_on_ring` в `main.py`). Всё ниже относится только к
+`'spiral'`.
 
-## The edit-and-see-it workflow
+## Рабочий цикл «правим и сразу видим»
 
-1. Run `python main.py` (or `python watcher.py` to auto-restart on exit).
-2. Edit `luminaires_rig.json` by hand in any text editor while the app is
-   running.
-3. Save the file, then press **R** in the app window. It re-reads the
-   file from disk and rebuilds everything that depends on it — fixture
-   markers, index labels, aim/aperture gizmos, the illuminance color
-   scale — without restarting the app.
-4. Pressing **1**/**2** (tilt every fixture down/up) writes each
-   fixture's new absolute tilt angle straight back into this same file,
-   so the file always reflects the last angle you saw on screen — you
-   don't need to copy numbers back by hand.
+1. Запустите `python main.py` (или `python watcher.py`, чтобы сцена
+   сама перезапускалась при выходе).
+2. Правьте `luminaires_rig.json` в любом текстовом редакторе прямо пока
+   программа работает.
+3. Сохраните файл, затем нажмите **R** в окне приложения. Оно перечитает
+   файл с диска и пересоберёт всё, что от него зависит — маркеры
+   фонарей, подписи-номера, гизмо луча/раскрыва, цветовую шкалу
+   освещённости — без перезапуска приложения.
+4. Нажатие **1**/**2** (наклон всех фонарей вниз/вверх) сразу же
+   записывает новый абсолютный угол каждого фонаря обратно в этот же
+   файл — так что файл всегда отражает последний угол, который вы
+   видели на экране, копировать числа руками не нужно.
 
-If the file has a mistake `load_rig()` can't work around (a missing
-required field, an out-of-range value — see "Validation errors" below),
-startup (or the R-reload) raises a Python exception naming the exact
-fixture index and field at fault. There is no partial/best-effort load —
-either the whole rig loads or none of it does.
+Если в файле есть ошибка, которую `load_rig()` не может обойти
+(отсутствует обязательное поле, значение вне допустимого диапазона —
+см. «Ошибки валидации» ниже), запуск (или R-перезагрузка) выбрасывает
+Python-исключение с указанием конкретного индекса фикстуры и поля.
+Частичной/best-effort загрузки нет — либо загружается весь риг целиком,
+либо ничего.
 
-## Top-level shape
+## Общая форма файла
 
 ```json
 {
   "groups": {
-    "<group name>": {
-      "...shared settings...": "...",
-      "fixtures": [ { "...fixture...": "..." }, ... ]
+    "<имя группы>": {
+      "...общие настройки...": "...",
+      "fixtures": [ { "...фикстура...": "..." }, ... ]
     }
   },
   "fixtures": [
-    { "...fixture with no group...": "..." }
+    { "...фикстура без группы...": "..." }
   ]
 }
 ```
 
-Two places a fixture can live:
+Фикстура может жить в двух местах:
 
-- **Nested inside a group**, under `groups.<name>.fixtures` — the normal
-  case. The fixture inherits any shared setting (`mode`, `power_lm`,
-  `tilt_deg`, `theta_max_deg`, `d_offset`) its group defines, and only
-  needs to specify what's actually its own (position, and anything it
-  wants to override).
-- **In the top-level `fixtures` array**, alongside `"groups"` — for a
-  one-off fixture that doesn't belong to any group. It gets *no*
-  fallback values from anywhere, so it must set every required field
-  itself (`mode`, `power_lm`, `theta_max_deg`, plus its position fields).
-  The real rig currently has exactly one of these: fixture 20, a 15000 lm
-  floodlight aimed at the construction's peak (see the worked example
-  below).
+- **Вложенной внутрь группы**, в `groups.<имя>.fixtures` — обычный
+  случай. Фикстура наследует любую общую настройку группы (`mode`,
+  `power_lm`, `tilt_deg`, `theta_max_deg`, `d_offset`) и указывает
+  только то, что реально своё (позицию и всё, что хочет
+  переопределить).
+- **В верхнеуровневом массиве `fixtures`**, рядом с `"groups"` — для
+  одиночной фикстуры, которая вообще не принадлежит никакой группе. Ей
+  *неоткуда* взять значения по умолчанию, поэтому она обязана сама
+  задать все обязательные поля (`mode`, `power_lm`, `theta_max_deg`,
+  плюс поля позиции). В реальном риге сейчас ровно одна такая фикстура:
+  №20, прожектор на 15000 лм, направленный на пик конструкции (см.
+  разобранный пример ниже).
 
-A fixture's group membership is purely *where it's written in the file*
-— there is no `"group": "..."` field on the fixture object anymore (an
-older version of this file worked that way; if you're looking at an old
-copy or an old note that mentions a per-fixture `"group"` field, it's
-out of date).
+Принадлежность фикстуры к группе определяется исключительно *тем, где
+она записана в файле* — поля `"group": "..."` на самой фикстуре больше
+нет (в более старой версии файла было именно так; если вы смотрите на
+старую копию или заметку, где упоминается поле `"group"` на фикстуре —
+она устарела).
 
-## Group settings (`groups.<name>`)
+## Настройки группы (`groups.<имя>`)
 
-| field | required? | meaning |
+| поле | обязательно? | смысл |
 |---|---|---|
-| `enabled` | no (default `true`) | see "Enabling/disabling" below |
-| `mode` | yes, unless every fixture in the group sets its own | `"free"` or `"spiral"` — see "Fixture position" below |
-| `power_lm` | yes, unless every fixture sets its own | luminous flux Φ, lumens (`LUMINAIRE.md` §1) |
-| `tilt_deg` | no (default `0.0`) | absolute tilt from horizontal, degrees, positive = up |
-| `theta_max_deg` | yes, unless every fixture sets its own | beam half-angle, degrees, `(0, 90]` |
-| `d_offset` | no (default: whatever `main.py` passes to `load_rig`, currently `0.05` m) | source offset added to distance before the inverse-square falloff, avoids a divide-by-near-zero blowout for very close segments |
-| `fixtures` | yes (can be an empty array) | this group's fixture list |
+| `enabled` | нет (по умолчанию `true`) | см. «Включение/выключение» ниже |
+| `mode` | да, если только каждая фикстура группы не задаёт своё | `"free"` или `"spiral"` — см. «Позиция фикстуры» ниже |
+| `power_lm` | да, если только каждая фикстура не задаёт своё | световой поток Φ, люмены (`LUMINAIRE.md` §1) |
+| `tilt_deg` | нет (по умолчанию `0.0`) | абсолютный наклон от горизонтали, градусы, положительное = вверх |
+| `theta_max_deg` | да, если только каждая фикстура не задаёт своё | полуугол раскрыва луча, градусы, `(0, 90]` |
+| `d_offset` | нет (по умолчанию — то, что `main.py` передаёт в `load_rig`, сейчас `0.05` м) | офсет источника, добавляемый к расстоянию перед законом обратных квадратов — избегает выброса освещённости при делении на почти-ноль для очень близких кусков |
+| `fixtures` | да (может быть пустым массивом) | список фикстур этой группы |
 
-Any of `mode`/`power_lm`/`tilt_deg`/`theta_max_deg`/`d_offset` can
-instead be set (or overridden) directly on an individual fixture inside
-the group — the fixture's own value always wins if present, otherwise
-the group's value is used. This is the main point of grouping: put a
-setting once on the group instead of repeating it on every fixture, and
-override just the one fixture that needs to differ (a narrower spot, a
-custom tilt, ...).
+Любое из `mode`/`power_lm`/`tilt_deg`/`theta_max_deg`/`d_offset` можно
+вместо этого задать (или переопределить) прямо на отдельной фикстуре
+внутри группы — собственное значение фикстуры всегда побеждает, если
+задано, иначе берётся значение группы. В этом весь смысл группировки:
+задать настройку один раз на группу вместо повторения на каждой
+фикстуре, и переопределить только ту одну, что должна отличаться
+(более узкий луч, свой наклон, ...).
 
-`mode`, `power_lm` and `theta_max_deg` are the three fields that must be
-resolvable *somehow* — set on the fixture, on its group, or (for a
-groupless fixture) directly, since there's no group to check. If none of
-those apply, loading fails with a `ValueError` naming the fixture index
-and the missing field.
+`mode`, `power_lm` и `theta_max_deg` — три поля, которые обязаны
+как-то разрешиться: на самой фикстуре, на её группе, либо (для
+безгрупповой фикстуры) прямо на ней, поскольку группы для проверки
+нет. Если ни один из вариантов не сработал, загрузка падает с
+`ValueError`, указывающим индекс фикстуры и недостающее поле.
 
-## Fixture fields
+## Поля фикстуры
 
-Every fixture, wherever it lives, can have:
+У каждой фикстуры, где бы она ни жила, могут быть:
 
-| field | meaning |
+| поле | смысл |
 |---|---|
-| `index` | ignored on read — `load_rig()` always overwrites it with the fixture's position in the flattened list (see "Index numbering" below). Written back to the file for your own reference (matches the number floating above the fixture in the scene). |
-| `enabled` | `true`/`false`, default `true` — see "Enabling/disabling" |
-| `mode` | overrides the group's `mode`, or sets it (groupless fixture) |
-| `power_lm` | overrides the group's `power_lm` |
-| `tilt_deg` | overrides the group's `tilt_deg` (or the `0.0` default) |
-| `theta_max_deg` | overrides the group's `theta_max_deg` |
-| `d_offset` | overrides the group's `d_offset` |
-| *position fields* | **not** inherited from the group — always set per-fixture, see below |
+| `index` | игнорируется при чтении — `load_rig()` всегда перезаписывает его позицией фикстуры в развёрнутом списке (см. «Нумерация index» ниже). Записывается обратно в файл для вашего удобства (совпадает с номером, висящим над фикстурой в сцене). |
+| `enabled` | `true`/`false`, по умолчанию `true` — см. «Включение/выключение» |
+| `mode` | переопределяет `mode` группы, либо задаёт его (безгрупповая фикстура) |
+| `power_lm` | переопределяет `power_lm` группы |
+| `tilt_deg` | переопределяет `tilt_deg` группы (или дефолт `0.0`) |
+| `theta_max_deg` | переопределяет `theta_max_deg` группы |
+| `d_offset` | переопределяет `d_offset` группы |
+| *поля позиции* | **не** наследуются от группы — всегда задаются на самой фикстуре, см. ниже |
 
-### Position: `mode: "free"`
+### Позиция: `mode: "free"`
 
 ```json
 { "mode": "free", "x_m": 3.0, "y_m": 1.5, "z_m": 0.0, ... }
 ```
 
-`x_m`/`y_m`/`z_m` — absolute world position in meters, anywhere. This is
-the escape hatch for anything not mounted directly on the construction:
-floor floodlights, a light on a truss, a pole, whatever. No range checks
-are applied — you're responsible for the position making physical sense.
+`x_m`/`y_m`/`z_m` — произвольная мировая позиция в метрах, где угодно.
+Это «аварийный люк» для всего, что не крепится прямо на конструкции:
+прожектор на полу, свет на ферме, на стойке, что угодно. Проверок
+диапазона нет — за физический смысл позиции отвечаете вы сами.
 
-### Position: `mode: "spiral"`
+### Позиция: `mode: "spiral"`
 
 ```json
 { "mode": "spiral", "s_pct": 34.0, "side": 1, "h_m": 2.97, ... }
 ```
 
-Mounts the fixture directly on the construction itself, treating the
-analytic spiral curve as a "virtual column" at any point along it (not
-snapped to one of the discrete real columns — `GEOMETRY.md`'s actual
-0.17 m column pitch is a separate, finer-grained concept from this
-placement).
+Крепит фикстуру прямо на самой конструкции, трактуя аналитическую
+кривую спирали как «виртуальный столб» в любой точке вдоль неё (без
+привязки к одному из дискретных реальных столбов — настоящий шаг
+столбов 0.17 м из `GEOMETRY.md` — отдельное, более мелкое понятие, не
+связанное с этим позиционированием).
 
-- **`s_pct`** — position along the spiral's length, as a percentage,
-  **0 to 100**. `s_pct=0` is the tall, center end (height 9.0 m);
-  `s_pct=100` is the short, outer end (height 0 m). Height decreases
-  monotonically as `s_pct` increases. Some reference points on the real
-  curve (independent of column pitch — a property of the curve's shape):
+- **`s_pct`** — позиция вдоль длины спирали, в процентах, **от 0 до
+  100**. `s_pct=0` — высокий центральный конец (высота 9.0 м);
+  `s_pct=100` — низкий внешний конец (высота 0 м). Высота монотонно
+  убывает с ростом `s_pct`. Несколько опорных точек на реальной кривой
+  (не зависят от шага столбов — это свойство формы самой кривой):
 
-  | `s_pct` | column height there |
+  | `s_pct` | высота столба в этой точке |
   |---|---|
-  | 0 | 9.00 m (the very peak) |
-  | 33.46 | 4.00 m |
-  | 64.06 | 2.00 m |
-  | 100 | 0.00 m |
+  | 0 | 9.00 м (самый пик) |
+  | 33.46 | 4.00 м |
+  | 64.06 | 2.00 м |
+  | 100 | 0.00 м |
 
-- **`side`** — `1` or `2` (default `1`), which of the two mirrored
-  spiral arms. The two arms are point-reflections of each other through
-  the origin, so `side=1`/`side=2` at the same `s_pct` sit at opposite
-  ends of the construction, same height.
-- **`h_m`** — mounting height above the ground, meters. Must satisfy
-  **both**:
-  1. `2.0 <= h_m <= 4.0` (a person mounting a fixture by hand won't
-     reach below head height or above what a ladder comfortably allows —
-     `MOUNT_HEIGHT_MIN`/`MOUNT_HEIGHT_MAX` in `rig_io.py`), and
-  2. `h_m` does not exceed the actual column height at that `s_pct`/
-     `side` (you can't float a fixture above the top of the column it's
-     mounted on).
+- **`side`** — `1` или `2` (по умолчанию `1`), какое из двух зеркальных
+  плеч спирали. Оба плеча — точечное отражение друг друга относительно
+  начала координат, так что `side=1`/`side=2` при одном и том же
+  `s_pct` сидят на противоположных концах конструкции, на одной и той
+  же высоте.
+- **`h_m`** — высота крепления над землёй, в метрах. Должна
+  удовлетворять **обоим** условиям:
+  1. `2.0 <= h_m <= 4.0` (человек, крепящий фонарь руками, не полезет
+     ниже уровня головы и не дотянется выше, чем позволяет стремянка —
+     `MOUNT_HEIGHT_MIN`/`MOUNT_HEIGHT_MAX` в `rig_io.py`), и
+  2. `h_m` не превышает реальную высоту столба в этой точке `s_pct`/
+     `side` (нельзя подвесить фонарь выше верхушки столба, на котором
+     он якобы закреплён).
 
-  Combining both constraints: mounting is only physically possible for
-  `s_pct` roughly in `[0, 64.06]` — beyond that the column itself is
-  already shorter than the 2 m minimum reach.
+  Из совмещения обоих условий следует: крепление физически возможно
+  только для `s_pct` примерно в диапазоне `[0, 64.06]` — за этой
+  границей сам столб уже короче минимальных 2 м досягаемости.
 
-The built fixture is nudged 0.10 m radially toward the center from the
-exact curve point (`SPIRAL_MOUNT_INSET_M` in `rig_io.py`) — mounting a
-fixture exactly on the line of "its own" column would put it right
-against (practically touching) the very column it's illuminating,
-producing a nonphysical near-zero-distance blowout in the segments right
-at the mount point. The `h_m` range checks above use the true on-column
-point, before this shift — only the built `Luminaire`'s actual position
-moves.
+Итоговая позиция фикстуры сдвинута на 0.10 м радиально к центру от
+точной точки на кривой (`SPIRAL_MOUNT_INSET_M` в `rig_io.py`) —
+крепление фикстуры точно на линии «своего» столба поставило бы её
+вплотную (практически впритык) к тому самому столбу, который она
+освещает, что даёт нефизичный выброс освещённости от почти нулевого
+расстояния прямо в точке крепления. Проверки диапазона `h_m` выше
+используют настоящую точку на столбе, до этого сдвига — смещается
+только фактическая позиция построенного `Luminaire`.
 
-#### Mechanics: what `s_pct` actually parametrizes (read this before spacing fixtures)
+#### Механика: что на самом деле параметризует `s_pct` (прочитать перед расстановкой фонарей)
 
-`s_pct` is **not** a fraction of physical distance along the spiral,
-even though "position along the spiral's length" (and the code's own
-naming — `spiral.column_at_s`, "spiral-length fraction") suggests it. It
-is actually a fraction of the spiral's underlying **angular parameter**
-φ, over the fixed range `[φ0, φ_max]` (`GEOMETRY.md` §2/§3):
+`s_pct` — это **не** доля физического расстояния вдоль спирали, хотя
+формулировка «позиция вдоль длины спирали» (и само название в коде —
+`spiral.column_at_s`, «доля длины спирали») это предполагает. На самом
+деле это доля лежащего в основе **углового параметра** φ, на
+фиксированном диапазоне `[φ0, φ_max]` (`GEOMETRY.md` §2/§3):
 
 ```
 phi = phi0 + (s_pct / 100) * (phi_max - phi0)
-(x, z) = point on the Archimedean curve R = a*phi at that phi
-height  = continuous_height(phi)   <- the TRUE Lagrange profile,
-                                       evaluated at the real arc-length
-                                       fraction of that phi (see below)
+(x, z) = точка на кривой Архимеда R = a*phi при этом phi
+height  = continuous_height(phi)   <- НАСТОЯЩИЙ профиль Лагранжа,
+                                       посчитанный по реальной доле
+                                       длины дуги для этого phi (см. ниже)
 ```
 
-`φ0 ≈ 1.795` rad is fixed (the construction's tall center end); `φ_max
-≈ 12.622` rad is solved numerically (Newton's method, `spiral.py`,
-`_solve_phi_max`) so that the arc length from `φ0` to `φ_max` equals the
-construction's fixed total unrolled length (`a·L ≈ 25.28` m,
-`GEOMETRY.md` §3) — that solve is independent of column pitch, so it
-doesn't change if `main.py`'s `SPIRAL_PITCH` is overridden for testing.
+`φ0 ≈ 1.795` рад — фиксировано (высокий центральный конец
+конструкции); `φ_max ≈ 12.622` рад находится численно (методом
+Ньютона, `spiral.py`, `_solve_phi_max`) так, чтобы длина дуги от `φ0`
+до `φ_max` равнялась фиксированной суммарной длине развёртки
+конструкции (`a·L ≈ 25.28` м, `GEOMETRY.md` §3) — это вычисление не
+зависит от шага столбов, так что не меняется, если `SPIRAL_PITCH` в
+`main.py` переопределён для теста.
 
-**Why this matters in practice:** an Archimedean spiral's arc length
-does not grow linearly with φ — `ds/dφ = a·√(1+φ²)` gets larger as φ
-(and the radius) grows, so a fixed step in φ (equivalently, a fixed step
-in `s_pct`) covers *more* physical distance out near the wide outer
-turns than it does near the tightly-wound center. Concretely, measured
-against the true arc-length fraction from the center:
+**Почему это важно на практике:** длина дуги спирали Архимеда растёт
+нелинейно относительно φ — `ds/dφ = a·√(1+φ²)` увеличивается по мере
+роста φ (и радиуса), так что фиксированный шаг по φ (эквивалентно,
+фиксированный шаг `s_pct`) покрывает *больше* физического расстояния
+на широких внешних витках, чем у туго намотанного центра. Конкретно, в
+сравнении с настоящей долей длины дуги от центра:
 
-| `s_pct` | true arc-length fraction from center |
+| `s_pct` | настоящая доля длины дуги от центра |
 |---|---|
 | 0 | 0 % |
 | 10 | 3.5 % |
@@ -214,40 +219,44 @@ against the true arc-length fraction from the center:
 | 80 | 68.3 % |
 | 100 | 100 % |
 
-So `s_pct=64` is only **47 %** of the way along the actual curve, not
-64 %. The column **height** you get is still exactly physically correct
-— `continuous_height(phi)` always converts through the real arc-length
-fraction internally (`GEOMETRY.md` §5's Lagrange profile is defined
-against true arc length, not φ), which is why the height numbers in the
-table above this section are accurate. It's specifically the *spacing*
-implied by evenly-stepped `s_pct` values that is not arc-length-uniform.
+То есть `s_pct=64` — это лишь **47 %** пути по настоящей кривой, а не
+64 %. **Высота** столба при этом всё равно посчитана абсолютно точно —
+`continuous_height(phi)` внутри себя всегда пересчитывает через
+настоящую долю длины дуги (профиль Лагранжа из `GEOMETRY.md` §5 задан
+именно по истинной длине дуги, а не по φ), поэтому числа высоты в
+таблице выше — точные. Именно *шаг*, подразумеваемый равномерными
+значениями `s_pct`, не равномерен по длине дуги.
 
-**What this means for the real rig:** the `columns` group's five
-`s_pct` values (32/40/48/56/64, evenly spaced *in `s_pct`*) are
-therefore **not** evenly spaced along the actual construction — they sit
-closer together physically than the even 8-point spacing suggests, all
-bunched into the outer ~47% of the arc length (per the table above).
-This was an accepted simplification when that test layout was built, not
-a considered choice about physical fixture spacing. If you need fixtures
-truly evenly spaced along the real curve, don't step `s_pct` evenly —
-compute the φ (or arc-length) values you want first and convert back to
-`s_pct = 100 * (phi - phi0) / (phi_max - phi0)`, or treat `s_pct` as a
-rough "how far from the center" dial rather than a ruler.
+**Что это значит для реального рига:** пять значений `s_pct` группы
+`columns` (32/40/48/56/64, равномерно расставленные *по `s_pct`*)
+поэтому **не** расставлены равномерно вдоль настоящей конструкции — они
+физически стоят теснее, чем предполагает равномерная 8-точечная
+расстановка, все зажаты во внешних ~47% длины дуги (по таблице выше).
+Это было принятым на момент постройки этого тестового макета
+упрощением, а не осознанным решением про физическое расстояние между
+фонарями. Если нужны фонари, реально равномерно расставленные вдоль
+настоящей кривой — не шагайте по `s_pct` равномерно: сначала посчитайте
+нужные значения φ (или длины дуги), затем переведите их обратно в
+`s_pct = 100 * (phi - phi0) / (phi_max - phi0)`, либо относитесь к
+`s_pct` как к грубой ручке «насколько далеко от центра», а не как к
+линейке.
 
-## Aiming and tilt
+## Прицеливание и наклон
 
-Every fixture aims the same way, no matter its mode or position:
-**horizontally toward the central vertical axis** (the line `x=0, z=0`
-through the world origin), **then tilted up or down by `tilt_deg`**.
-There is currently no way to aim a fixture at an arbitrary 3D point —
-only "toward the axis" (horizontal) composed with "up/down by this many
-degrees" (vertical). If you need a fixture to hit a specific point that
-isn't on (or very near) the central axis, you have to work out the
-right `tilt_deg` yourself the same way a floor fixture is aimed at the
-structure: `tilt_deg = degrees(atan2(target_height - y_m, horizontal_distance_to_axis))`.
+Каждая фикстура целится одинаково, независимо от режима и позиции:
+**горизонтально в сторону центральной вертикальной оси** (линия
+`x=0, z=0` через начало мировых координат), **затем наклоняется вверх
+или вниз на `tilt_deg`**. Сейчас нет способа направить фикстуру в
+произвольную 3D-точку — только «в сторону оси» (по горизонтали) в
+сочетании с «наклон вверх/вниз на столько-то градусов» (по вертикали).
+Если нужно, чтобы фонарь попадал в конкретную точку, не лежащую на
+центральной оси (или почти на ней), придётся посчитать нужный
+`tilt_deg` самостоятельно — так же, как прицелен на конструкцию любой
+из напольных фонарей: `tilt_deg = degrees(atan2(высота_цели - y_m,
+горизонтальное_расстояние_до_оси))`.
 
-**Worked example** — fixture 20 in the real rig, a floodlight aimed at
-the construction's peak:
+**Разобранный пример** — фикстура 20 в реальном риге, прожектор,
+нацеленный на пик конструкции:
 
 ```json
 {
@@ -256,86 +265,94 @@ the construction's peak:
 }
 ```
 
-It sits on the ground (`y_m=0`) 10 m out along +Z. The peak (the tall
-end of each spiral arm, `s_pct=0`) is 9.0 m up and *almost* — but not
-exactly — on the central axis (it's actually ~0.57 m off-axis; see
-`GEOMETRY.md` §2's `PHI0`). `tilt_deg` was computed as
-`degrees(atan2(9.0, 10.0)) ≈ 41.987°`, i.e. "aim at the axis, tilted up
-enough to hit 9 m at 10 m out" — the same approximation every other
-fixture in the rig already uses, and at 10 m away the ~0.57 m horizontal
-miss is a fraction of a degree, not worth a more exact calculation.
+Она стоит на земле (`y_m=0`) в 10 м по +Z. Пик (высокий конец каждого
+плеча спирали, `s_pct=0`) находится на высоте 9.0 м и *почти* — но не
+точно — на центральной оси (на самом деле он смещён от неё примерно на
+0.57 м; см. `PHI0` в `GEOMETRY.md` §2). `tilt_deg` посчитан как
+`degrees(atan2(9.0, 10.0)) ≈ 41.987°`, то есть «целься в ось, наклонись
+вверх ровно настолько, чтобы попасть в 9 м на дистанции 10 м» — то же
+самое приближение, что уже используют все остальные фонари рига, и на
+дистанции 10 м промах в ~0.57 м по горизонтали — это доля градуса, не
+стоящая более точного расчёта.
 
-`tilt_deg` in the file is always this **absolute** angle from horizontal
-— never a delta relative to a previous edit or session. Pressing 1/2 in
-the running app changes every fixture's absolute tilt (clamped
-independently per fixture to ±90°, 2.5° per press — `TILT_STEP_DEG`/
-`TILT_LIMIT_DEG` in `main.py`) and immediately overwrites `tilt_deg` in
-the file to match, for every fixture, group or no group. That means: if
-you hand-edit `tilt_deg` values and then also press 1/2 in the app, your
-hand-edited values get overwritten with whatever the app computed — save
-your edits, reload with R, *then* fine-tune with 1/2 if you want both.
+`tilt_deg` в файле — это **абсолютный** угол наклона фонаря от
+горизонтали (положительное значение — вверх), сохранённый после
+последнего применённого изменения, будь то ручная правка файла или
+клавиши `1`/`2`. Нажатие 1/2 в работающем приложении меняет абсолютный
+наклон каждой фикстуры (независимо клэмпится у каждой в пределах ±90°, шаг 2.5° за
+нажатие — `TILT_STEP_DEG`/`TILT_LIMIT_DEG` в `main.py`) и сразу же
+перезаписывает `tilt_deg` в файле соответствующим значением, у каждой
+фикстуры, с группой или без. Это значит: если вы правите `tilt_deg`
+руками, а потом ещё нажимаете 1/2 в приложении, ваши ручные правки
+будут перезаписаны тем, что посчитало приложение — сохраните правки,
+перезагрузите клавишей R, и только *потом* подстраивайте клавишами 1/2,
+если нужно и то, и то.
 
-## `theta_max_deg` — beam angle
+## `theta_max_deg` — угол раскрыва луча
 
-The maximum deviation from the aim axis, in degrees, i.e. `30` lights a
-`±30°` cone (`60°` full width), not a `30°`-wide one. Must be in
-`(0, 90]`. Changing it automatically redistributes the fixture's
-`power_lm` over the new cone (a narrower beam gets brighter at the
-center, same total flux) — no other field needs adjusting when you
-change this (see `LUMINAIRE.md` §5 for the formula).
+Максимальное отклонение от оси прицеливания, в градусах — то есть `30`
+освещает конус `±30°` (полный угол `60°`), а не конус шириной `30°`.
+Должен быть в диапазоне `(0, 90]`. При изменении этого значения
+`power_lm` фикстуры автоматически перераспределяется на новый конус
+(более узкий луч становится ярче в центре, суммарный поток тот же) —
+никакое другое поле трогать не нужно при смене этого угла (формулу
+см. в `LUMINAIRE.md` §5).
 
-## Enabling/disabling
+## Включение/выключение
 
-A fixture actually contributes light only if **both** are true:
+Фикстура реально даёт свет, только если **оба** условия истинны:
 
-- its own `enabled` (default `true`), **and**
-- its group's `enabled` (default `true`; groupless fixtures have no
-  group, so only their own `enabled` applies).
+- её собственный `enabled` (по умолчанию `true`), **и**
+- `enabled` её группы (по умолчанию `true`; у безгрупповых фикстур
+  группы нет, поэтому действует только их собственный `enabled`).
 
-So `groups.columns.enabled: false` turns off all ten `columns` fixtures
-in one edit, while an individual fixture's own `"enabled": false` turns
-off just that one regardless of its group. Disabled fixtures are **not**
-removed from the scene — they still get a marker (shown gray instead of
-yellow) and keep their index, so you can still see where they are and
-re-enable them later without renumbering anything. They're simply
-skipped when illuminance is computed.
+Так, `groups.columns.enabled: false` разом гасит все десять фикстур
+группы `columns`, а собственный `"enabled": false` отдельной фикстуры
+гасит только её одну, независимо от группы. Выключенные фикстуры **не**
+удаляются из сцены — у них по-прежнему есть маркер (показан серым
+вместо жёлтого) и свой индекс, так что видно, где они стоят, и их можно
+снова включить позже, ничего не перенумеровывая. Они просто
+пропускаются при расчёте освещённости.
 
-## Index numbering
+## Нумерация `index`
 
-`index` is always recomputed on load, never read from the file. The
-numbering walks every group's `fixtures` array (groups in the order they
-appear in `groups`), then the top-level (groupless) `fixtures` array —
-so index order follows file order. In the real rig: `columns` fixtures
-are 0-9, `floor` fixtures are 10-19, and the groupless peak floodlight is
-20. If you add, remove, or reorder fixtures, every following index
-shifts accordingly on the next load/reload — this is expected, and is
-also exactly what the number floating above each marker in the scene
-will show.
+`index` всегда пересчитывается при загрузке, никогда не читается из
+файла. Нумерация проходит по массиву `fixtures` каждой группы (группы —
+в том порядке, в котором они перечислены в `groups`), затем по
+верхнеуровневому (безгрупповому) массиву `fixtures` — то есть порядок
+индексов следует порядку в файле. В реальном риге: фикстуры `columns` —
+0-9, фикстуры `floor` — 10-19, а безгрупповой прожектор на пик — 20.
+Если добавить, удалить или переставить фикстуры, все последующие
+индексы сдвинутся соответственно при следующей загрузке/перезагрузке —
+это ожидаемо, и это же число будет висеть над каждым маркером в сцене.
 
-## Validation errors you might hit
+## Ошибки валидации, с которыми можно столкнуться
 
-All of these are raised as `ValueError` naming the offending fixture
-index (and field, where applicable) at load time — nothing loads
-partially.
+Все они выбрасываются как `ValueError` с указанием индекса
+проблемной фикстуры (и поля, где применимо) в момент загрузки —
+ничего не грузится частично.
 
-- Missing `mode` / `power_lm` / `theta_max_deg`, and no group (or no
-  group value) to fall back to.
-- `theta_max_deg` outside `(0, 90]`.
-- `mode` is something other than `"free"` or `"spiral"`.
-- `mode: "spiral"` with `h_m` outside `[2.0, 4.0]`.
-- `mode: "spiral"` with `h_m` greater than the actual column height at
-  that `s_pct`/`side`.
-- Missing a mode-specific position field (`x_m`/`y_m`/`z_m` for `free`;
-  `s_pct`/`h_m` for `spiral` — `side` is optional, defaults to `1`).
+- Отсутствует `mode` / `power_lm` / `theta_max_deg`, и группы (или
+  значения на группе), на которое можно было бы опереться, нет.
+- `theta_max_deg` вне диапазона `(0, 90]`.
+- `mode` — что-то, кроме `"free"` или `"spiral"`.
+- `mode: "spiral"` с `h_m` вне диапазона `[2.0, 4.0]`.
+- `mode: "spiral"` с `h_m` больше настоящей высоты столба в этой точке
+  `s_pct`/`side`.
+- Отсутствует специфичное для режима поле позиции (`x_m`/`y_m`/`z_m`
+  для `free`; `s_pct`/`h_m` для `spiral` — `side` необязателен, по
+  умолчанию `1`).
 
-## What ends up in `luminaires_output.csv`
+## Что попадает в `luminaires_output.csv`
 
-Every recompute (startup, every tilt keypress, every R reload) rewrites
-`luminaires_output.csv` — one row per fixture, in the same index order,
-columns: `index, group, enabled, x_m, y_m, z_m, aim_x, aim_y, aim_z,
-phi_lm, theta_max_deg, d_offset_m, i0_cd, tilt_deg`. `group` is the empty
-string for a groupless fixture. `aim_x/aim_y/aim_z` and `tilt_deg` are
-always the fixture's *current* resolved values (after applying any
-group fallback and any interactive tilt) — this file is a flat,
-fully-resolved dump for inspection/analysis, not something you hand-edit
-(unlike `luminaires_rig.json` itself, which is the source of truth).
+Каждый пересчёт (запуск, каждое нажатие клавиш наклона, каждая
+перезагрузка по R) перезаписывает `luminaires_output.csv` — по строке
+на фикстуру, в том же порядке индексов, колонки: `index, group,
+enabled, x_m, y_m, z_m, aim_x, aim_y, aim_z, phi_lm, theta_max_deg,
+d_offset_m, i0_cd, tilt_deg`. `group` — пустая строка для безгрупповой
+фикстуры. `aim_x/aim_y/aim_z` и `tilt_deg` — это всегда *текущие*,
+уже разрешённые значения фикстуры (после применения группового
+фолбэка и любого интерактивного наклона) — этот файл представляет
+собой плоский, полностью разрешённый дамп для просмотра/анализа, а не
+то, что правится руками (в отличие от самого `luminaires_rig.json`,
+который является источником истины).

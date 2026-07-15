@@ -1,24 +1,26 @@
-# sim/ — standalone CSV/JSON export (no Ursina required)
+# sim/ — автономный экспорт в CSV/JSON (Ursina не нужна)
 
-`wall_example.py` is a separate, independent tool from `../main.py`: it
-builds a simple flat test wall of columns lit by one spotlight, using the
-same `Luminaire`/`Segment`/`Column` classes from `../src/`, and writes the
-result to CSV/JSON without needing `ursina` installed. **It is still on
-the older flat-wall scenario** — it has not been updated to the ring/
-spiral structure or occlusion that `main.py` now uses.
+`wall_example.py` — отдельный, независимый от `../main.py` инструмент:
+строит простую плоскую тестовую стену из столбов, освещённую одним
+прожектором, используя те же классы `Luminaire`/`Segment`/`Column` из
+`../src/`, и пишет результат в CSV/JSON без необходимости ставить
+`ursina`. **Он всё ещё на старом плоском сценарии** — не обновлён под
+кольцевую/спиральную структуру и затенение, которые теперь использует
+`main.py`.
 
 ```
 python wall_example.py
 ```
 
-writes `wall_example_output.csv` (one row per segment/ray) and
-`wall_example_viz.json` (heatmap grid + full per-ray detail) into this
-folder — both gitignored, regenerated on every run.
+пишет `wall_example_output.csv` (по строке на сегмент/луч) и
+`wall_example_viz.json` (сетка теплокарты + полная детализация по
+каждому лучу) в эту же папку — оба в `.gitignore`, пересоздаются при
+каждом запуске.
 
-`spiral_line_intersection.ipynb` is where the ray/spiral-curve
-intersection method (used by `src/spiral.py`'s occlusion check) was
-validated *before* being ported into production code: it checks the
-analytic spiral curve against the discrete column positions, checks
-intersection-finding correctness (including the on-segment vs.
-on-infinite-line distinction), and visualizes both. Needs `numpy` +
-`matplotlib` and a Jupyter kernel with those installed.
+`spiral_line_intersection.ipynb` — здесь метод пересечения луча с
+кривой спирали (используемый проверкой затенения в `src/spiral.py`)
+был провалидирован *до* переноса в продовый код: сверяет аналитическую
+кривую спирали с дискретными позициями столбов, проверяет корректность
+поиска пересечений (включая различие «на отрезке» vs «на бесконечной
+прямой») и визуализирует и то, и другое. Нужны `numpy` + `matplotlib` и
+Jupyter-ядро с ними установленными.

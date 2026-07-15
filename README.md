@@ -1,126 +1,213 @@
-# ursina_sim — spiral art-construction lighting simulator
+# ursina_sim — симулятор освещения спиральной арт-конструкции
 
-Simulates how a set of spotlight fixtures light up a spiral art
-construction (a forest of vertical boards arranged along two mirrored
-Archimedean spirals, each with its own height — see
-[docs/GEOMETRY.md](docs/GEOMETRY.md)): computes per-segment illuminance
-(including self-occlusion by the construction), renders it as an
-interactive 3D scene, and exports the same data as CSV for offline
-analysis.
+Симулятор рассчитывает, как набор прожекторов освещает спиральную
+арт-конструкцию, и показывает результат в виде интерактивной 3D-сцены.
 
-## Requirements
+Конструкция — это **лес прямых вертикальных досок**, расставленных по
+плану вдоль двух зеркальных спиралей Архимеда; высота каждой доски —
+отдельная функция от того, где она стоит вдоль спирали (у центра доски
+высокие, к внешнему краю — низкие, см.
+[docs/GEOMETRY.md](docs/GEOMETRY.md)). Издалека частый ряд досок разной
+высоты визуально сливается в подобие гладкого закрученного рога, хотя
+физически это отдельные прямые элементы.
 
-- Python 3.11+ (Ursina does not yet support every newer Python release —
-  if `pip install ursina` fails on your default interpreter, install a
-  3.11.x side by side and use that one)
-- `pip install -r requirements.txt` (Ursina + numpy)
+Программа считает освещённость каждого куска каждой доски (с учётом
+самозатенения — доски могут загораживать свет друг другу), рисует это
+как цветную интерактивную сцену на Ursina, и параллельно экспортирует
+те же числа в CSV для офлайн-анализа.
 
-## Running
+![Скриншот сцены: спиральная конструкция, освещённая рингом фонарей, наведённых на неё со всех сторон](docs/Screenshot.png)
+
+## Как это устроено (коротко)
+
+Общая механика расчёта: конструкция делится на столбы, каждый столб —
+на сегменты (короткие вертикальные куски одной доски); для каждого
+сегмента считается его освещённость с учётом дистанции до фонаря, силы
+света фонаря, угла между лучом и нормалью поверхности сегмента, и того,
+не загорожен ли этот луч самой конструкцией (тень).
+
+Пайплайн одного расчёта, от геометрии до картинки на экране:
+
+1. **Геометрия конструкции** (`src/spiral.py`, `src/structure.py`) —
+   строит список столбов (позиция в плане + высота) по аналитической
+   формуле спирали, режет каждый столб на куски (`Segment`) заданной
+   длины.
+2. **Риг осветителей** (`src/rig_io.py`, читает `luminaires_rig.json`) —
+   строит список фонарей (`Luminaire`): позиция, направление,
+   световой поток, угол раскрыва.
+3. **Расчёт освещённости** (`src/orchestrator.py`) — для каждого куска
+   и каждого фонаря считает вклад в освещённость (фотометрическая модель
+   — `src/luminaire.py`, см. [docs/LUMINAIRE.md](docs/LUMINAIRE.md)), с
+   проверкой затенения конструкцией самой себя (`src/occlusion.py` /
+   затенение спирали в `src/spiral.py`).
+4. **Отрисовка** (`main.py`, `gizmo.py`, `color_ramp.py`) — Ursina-сцена:
+   каждый кусок — плоская доска, окрашенная по своей освещённости; у
+   каждого фонаря — маркер, номер и гизмо луча/раскрыва.
+5. **Экспорт** (`export.py`) — та же самая освещённость и риг фонарей,
+   построчно, в CSV — на случай, если нужно посчитать что-то без Ursina
+   или свести в таблицу.
+
+Физическое ядро (шаги 1-3) полностью не зависит от Ursina — это чистая
+математика на кортежах/числах (`src/`, см.
+[src/README.md](src/README.md)), один источник истины, которым
+пользуются и интерактивная сцена (`main.py`), и автономный
+CSV-экспортёр без Ursina (`sim/wall_example.py`). Ursina-специфичный код
+(сцена, гизмо, цвет) живёт отдельно, рядом с `main.py`, а не внутри
+`src/`.
+
+## Требования
+
+- **Python 3.11+.** Ursina пока не поддерживает каждый новый релиз
+  Python — если `pip install ursina` не ставится на ваш Python по
+  умолчанию, поставьте рядом отдельный 3.11.x и используйте его.
+- **Два окружения на одной машине — обычное дело.** Физическое ядро
+  (`src/`) использует только `numpy` и работает в любом Python. Сама же
+  интерактивная сцена (`main.py`) требует **Python с установленной
+  Ursina** — если у вас на машине несколько установок Python (например,
+  системный/miniconda и отдельный Ursina-совместимый 3.11.x), для
+  `main.py`/`watcher.py` нужен именно тот, где стоит Ursina, а не
+  дефолтный `python`/`python3` в PATH.
+- Зависимости: `pip install -r requirements.txt` (Ursina + numpy; см.
+  комментарии в самом файле про версии и опциональные зависимости для
+  ноутбука в `sim/`).
+
+## Установка и запуск
 
 ```bash
+pip install -r requirements.txt
 python main.py
 ```
 
-or, to auto-restart the scene whenever you exit normally (Escape) so
-edited files are picked up without relaunching by hand:
+Либо, чтобы сцена сама перезапускалась при обычном выходе (Escape) —
+удобно, когда правишь `luminaires_rig.json` или код и хочешь видеть
+результат без ручного перезапуска:
 
 ```bash
 python watcher.py
 ```
 
-If you run `watcher.py` with a *different* interpreter than the one that
-has Ursina installed (e.g. a system default Python next to a separate
-Ursina-enabled install), point it at the right one with an environment
-variable instead of editing the script:
+Если `watcher.py` запускается *другим* интерпретатором, чем тот, где
+стоит Ursina (см. «Требования» выше), укажите нужный явно через
+переменную окружения вместо правки скрипта:
 
 ```bash
 URSINA_PYTHON="/path/to/ursina-python" python watcher.py
 ```
 
-### Controls
+### Управление в сцене
 
-- **WASD** — move, **mouse** — look, **Space/Shift** — up/down, **Alt** —
-  release/capture cursor, **Escape** — quit, **H** — debug info
-- **1 / 2** — tilt every fixture down/up together (2.5° per press, clamped
-  to ±90° from horizontal per fixture)
-- **R** — reload `luminaires_rig.json` from disk (hand-edit the file,
-  press R, see it applied without restarting)
+- **WASD** — перемещение, **мышь** — обзор, **Space/Shift** — вверх/вниз,
+  **Alt** — отпустить/захватить курсор, **Escape** — выход, **H** —
+  отладочная информация (счётчики Ursina).
+- **1 / 2** — наклонить все фонари вниз/вверх одновременно (шаг 2.5° за
+  нажатие, у каждого фонаря — свой предел ±90° от горизонтали, см.
+  [docs/RIG.md](docs/RIG.md)). Текущий наклон каждого фонаря тут же
+  сохраняется обратно в `luminaires_rig.json`.
+- **R** — перечитать `luminaires_rig.json` с диска: можно править файл
+  руками прямо во время работы программы, нажать R и увидеть результат
+  без перезапуска.
 
-## Scenarios
+При наведении мыши на кусок конструкции в углу экрана появляется его
+освещённость (E, люкс) и координаты — удобно для точечной проверки
+чисел.
 
-`main.py` has a `SCENARIO` switch near the top:
+## Сценарии
 
-- `'spiral'` (default) — the real construction, geometry from
-  `src/spiral.py`, fixture rig loaded from `luminaires_rig.json`.
-- `'rings'` — a synthetic two-ring test stand-in (used to validate the
-  physics/occlusion math against a simpler shape), with a placeholder
-  rig generated in code.
+В начале `main.py` есть переключатель `SCENARIO`:
 
-## The fixture rig (`luminaires_rig.json`)
+- **`'spiral'`** (по умолчанию) — настоящая конструкция: геометрия из
+  `src/spiral.py`, риг фонарей из `luminaires_rig.json` (см.
+  [docs/RIG.md](docs/RIG.md)).
+- **`'rings'`** — синтетический тестовый сценарий (два концентрических
+  кольца столбов вместо спирали), с рингом фонарей, сгенерированным
+  прямо в коде, без файла. Используется для проверки физики/затенения
+  на более простой форме, а не как рабочий режим — трогать, только если
+  нужно что-то отладить на упрощённой геометрии.
 
-**See [docs/RIG.md](docs/RIG.md) for the full field-by-field guide** —
-this is just the shape, for orientation.
+## Риг фонарей (`luminaires_rig.json`)
 
-A JSON object: `{"groups": {...}, "fixtures": [...]}`. Fixtures live
-*nested inside their group* (`groups.<name>.fixtures`, sharing that
-group's settings unless they override one); the top-level `fixtures`
-array is only for fixtures with no group at all, which must set every
-required field themselves.
+**Подробный, по-полевой разбор — в [docs/RIG.md](docs/RIG.md).** Здесь
+только общая форма, для ориентира.
 
-Each fixture has a position mode:
+Это JSON-объект `{"groups": {...}, "fixtures": [...]}`. Фонари лежат
+*вложенными внутрь своей группы* (`groups.<имя>.fixtures`), наследуя
+общие настройки группы, если сами их не переопределяют. Верхнеуровневый
+`fixtures` — только для фонарей без группы вообще; такой фонарь обязан
+задать все обязательные поля сам, наследовать их неоткуда.
 
-- `"mode": "free"` — absolute world position (`x_m, y_m, z_m`).
-- `"mode": "spiral"` — mounted on the construction itself, given as a
-  parameter along its length (`s_pct`, 0-100 — *not* a linear physical
-  distance, see docs/RIG.md), which of the two mirrored arms (`side`: 1
-  or 2), and mount height (`h_m`, must be within a person's reach and not
-  exceed the column's actual height there).
+У каждого фонаря — режим позиционирования:
 
-A fixture can be switched on/off two ways: `groups.<name>.enabled` turns
-off every fixture in that group at once, or a fixture's own
-`"enabled": false` turns off just that one — a fixture only lights up if
-**both** are true. Disabled fixtures stay visible in the scene (as gray
-markers) so you can still see where they are; they just don't contribute
-light.
+- **`"mode": "free"`** — произвольная мировая позиция (`x_m, y_m, z_m`),
+  без ограничений.
+- **`"mode": "spiral"`** — крепление прямо на конструкции: параметр
+  вдоль её длины (`s_pct`, от 0 до 100), какое из двух зеркальных плеч
+  (`side`: 1 или 2), высота крепления (`h_m`).
 
-`tilt_deg` is always the fixture's absolute angle from horizontal
-(never a delta) — pressing 1/2 in the scene writes each fixture's current
-tilt back into this file, so it persists across restarts.
+  `s_pct=0` — самый высокий конец конструкции (у центра, высота 9 м);
+  `s_pct=100` — самый низкий, внешний конец (высота 0 м); чем больше
+  `s_pct`, тем ниже и дальше от центра точка крепления. Технически это
+  доля не физического расстояния вдоль кривой, а угла поворота спирали
+  — из-за формы спирали Архимеда одинаковые шаги `s_pct` ближе к центру
+  соответствуют более коротким физическим отрезкам, чем такие же шаги
+  снаружи (высота столба в каждой точке всё равно точная — неравномерна
+  только сама расстановка по `s_pct`). Подробная механика с таблицей
+  чисел — [docs/RIG.md](docs/RIG.md).
 
-## Outputs
+  `h_m` — высота крепления над землёй, **от 2 до 4 метров** (в пределах
+  человеческого роста/досягаемости со стремянки) и не выше самой
+  конструкции в этой точке.
 
-Every run (and every tilt keypress) rewrites, in this folder:
+Фонарь можно выключить двумя способами: `groups.<имя>.enabled` гасит
+разом всю группу, а собственное `"enabled": false` фонаря — только его
+одного; фонарь светит, только если оба условия истинны. Выключенные
+фонари не исчезают из сцены (маркер становится серым), чтобы было видно,
+где они стоят — просто не дают света.
 
-- `segments_output.csv` — one row per structure segment: position,
-  surface normal, illuminance.
-- `luminaires_output.csv` — one row per fixture: position, aim direction,
-  power, group/enabled, current tilt.
+`tilt_deg` — абсолютный угол наклона фонаря от горизонтали (положительное
+значение — вверх). Нажатия 1/2 в сцене каждый раз записывают текущий
+угол каждого фонаря обратно в файл, так что наклон переживает
+перезапуски.
 
-Both are gitignored (regenerated, not source).
+## Выходные файлы
 
-## Project layout
+Каждый запуск (и каждое нажатие 1/2) перезаписывает в этой же папке:
+
+- **`segments_output.csv`** — по строке на каждый кусок конструкции:
+  позиция, нормаль поверхности, освещённость.
+- **`luminaires_output.csv`** — по строке на каждый фонарь: позиция,
+  направление, поток, группа/вкл-выкл, текущий наклон (см. разбор
+  колонок в конце [docs/RIG.md](docs/RIG.md)).
+
+Оба файла в `.gitignore` — это результат расчёта, не исходные данные,
+пересоздаются заново при каждом запуске.
+
+## Структура проекта
 
 ```
 ursina_sim/
-├── main.py              entry point: scene, scenario setup, keybindings
-├── watcher.py            auto-restart wrapper around main.py
-├── color_ramp.py         illuminance -> color mapping for the segment view
-├── gizmo.py              Ursina entities for a fixture's aim beam + aperture cone
-├── export.py             framework-free CSV export
-├── luminaires_rig.json   the fixture rig for SCENARIO='spiral' (see above)
-├── src/                  framework-free physics core — see src/README.md
-├── docs/                 design background (geometry/pieces/photometry) — see docs/README.md
-├── sim/                  standalone CSV export tool, no Ursina needed — see sim/README.md
-└── vendor/               vendored scene-scaffolding dependency — see vendor/README.md
+├── main.py               точка входа: сцена, выбор сценария, управление с клавиатуры
+├── watcher.py             обёртка авто-перезапуска вокруг main.py
+├── color_ramp.py          освещённость -> цвет для отрисовки кусков
+├── gizmo.py               Ursina-сущности луча/раскрыва фонаря
+├── export.py              CSV-экспорт, не зависит от Ursina
+├── luminaires_rig.json    риг фонарей для SCENARIO='spiral' (см. выше)
+├── src/                   физическое ядро без Ursina — см. src/README.md
+├── docs/                  математика/дизайн (геометрия/куски/фотометрия/риг) — см. docs/README.md
+├── sim/                   автономный CSV-экспортёр без Ursina — см. sim/README.md
+└── vendor/                вендоренная зависимость для сцены — см. vendor/README.md
 ```
 
-## What's still a placeholder
+Более подробно про каждую папку — в её собственном README (ссылки
+выше); про сам расчёт освещённости и форму конструкции — в
+[docs/README.md](docs/README.md).
 
-- Board width/thickness and segment length (`main.py`) are eyeballed, not
-  finalized.
-- The `'spiral'` rig's fixture count/positions are a working test layout,
-  not the final real-equipment list.
-- Occlusion treats each spiral arm as one continuous solid ribbon (board
-  gaps between individual columns are ignored) — a deliberate
-  simplification, not a bug.
-- Light reflections off the construction/ground are not modeled at all.
+## Что пока плейсхолдер, не финал
+
+- Ширина/толщина доски и длина куска (`main.py`) подобраны на глаз, не
+  финализированы.
+- Состав и расстановка фонарей в риге `'spiral'` — рабочий тестовый
+  макет, не итоговый список настоящего оборудования от заказчика.
+- Затенение считает каждое плечо спирали одной сплошной лентой (зазоры
+  между отдельными досками игнорируются) — осознанное упрощение, не
+  баг.
+- Переотражения света от конструкции/земли не моделируются вообще.
